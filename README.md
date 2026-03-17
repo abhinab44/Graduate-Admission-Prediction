@@ -52,6 +52,19 @@ This project builds and benchmarks a complete regression pipeline to predict the
 | `CGPA` | Undergraduate CGPA (out of 10) |
 | `Research` | Research experience (0 = No, 1 = Yes) |
 
+### Summary Statistics
+
+| Statistic | GRE Score | TOEFL Score | Univ_Rating | SOP | LOR | CGPA | Research | Chance_of_Admit |
+|---|---|---|---|---|---|---|---|---|
+| count | 400 | 400 | 400 | 400 | 400 | 400 | 400 | 400 |
+| mean | 316.81 | 107.41 | 3.09 | 3.40 | 3.45 | 8.60 | 0.55 | 0.724 |
+| std | 11.47 | 6.07 | 1.14 | 1.01 | 0.90 | 0.60 | 0.50 | 0.143 |
+| min | 290 | 92 | 1 | 1.0 | 1.0 | 6.80 | 0 | 0.34 |
+| 25% | 308 | 103 | 2 | 2.5 | 3.0 | 8.17 | 0 | 0.64 |
+| 50% | 317 | 107 | 3 | 3.5 | 3.5 | 8.61 | 1 | 0.73 |
+| 75% | 325 | 112 | 4 | 4.0 | 4.0 | 9.06 | 1 | 0.83 |
+| max | 340 | 120 | 5 | 5.0 | 5.0 | 9.92 | 1 | 0.97 |
+
 ---
 
 ## Pipeline Steps
@@ -61,7 +74,7 @@ This project builds and benchmarks a complete regression pipeline to predict the
         ↓
 2. Preprocessing        (strip/rename columns, drop Serial No., check nulls)
         ↓
-3. Train/Test Split      (80/20, random_state=42)
+3. Train/Test Split      (80/20, random_state=42)  →  Train: 320 | Test: 80
         ↓
 4. Feature Scaling       (MinMaxScaler — fit on train only, transform both)
         ↓
@@ -93,16 +106,18 @@ All models are evaluated with **5-fold cross-validation (CV MAE)** and independe
 
 ## Results
 
-| Model | CV MAE | Test MAE | Test RMSE | Test R² |
-|---|---|---|---|---|
-| Linear Regression | 0.0451 | 0.0480 | 0.0679 | **0.8212** |
-| Ridge (α=1.0) | 0.0455 | 0.0488 | 0.0695 | 0.8129 |
-| Random Forest | — | — | — | — |
-| SVR (RBF) | 0.0648 | 0.0665 | 0.0804 | 0.7496 |
+| Model | CV MAE (mean) | CV MAE (±std) | Test MAE | Test RMSE | Test R² |
+|---|---|---|---|---|---|
+| **Linear Regression** | **0.0451** | ±0.0049 | **0.0480** | **0.0679** | **0.8212** |
+| Ridge (α=1.0) | 0.0455 | ±0.0047 | 0.0488 | 0.0695 | 0.8129 |
+| Random Forest | 0.0507 | ±0.0049 | 0.0497 | 0.0704 | 0.8081 |
+| SVR (RBF) | 0.0648 | ±0.0033 | 0.0665 | 0.0804 | 0.7496 |
 
 - **Best model by R²:** Linear Regression (R² = 0.8212)
 - **Most important feature:** `CGPA` — dominant across all models
 - Ridge closely matches Linear Regression, confirming the near-linear nature of the problem
+- Mean residual: **−0.0123** (near zero — no systematic bias)
+- Std residual: **0.0668**
 
 ---
 
@@ -219,12 +234,14 @@ jupyter notebook graduate_admission_prediction.ipynb
 
 ## Key Findings
 
-- **CGPA** is the single strongest predictor of admission probability — agreed upon by both Linear Regression coefficients and Random Forest feature importances.
-- **Linear Regression and Ridge** perform nearly identically, confirming that the relationship between features and admission chance is largely linear.
-- **Random Forest** captures non-linear interactions but doesn't dramatically outperform linear models — suggesting diminishing returns from complexity on this dataset.
-- **SVR (RBF)** performs worst in this configuration, likely due to suboptimal default hyperparameters (no grid search applied).
-- **Residuals are centered around zero** with no systematic bias — the model does not consistently over- or under-predict.
-- **Correct scaling protocol** (MinMaxScaler fit only on training data, then transform both splits) prevents data leakage — a common mistake in many public implementations of this dataset.
+- **CGPA** is the single strongest predictor of admission probability (correlation = 0.87) — agreed upon by both Linear Regression coefficients and Random Forest feature importances (Gini ≈ 0.72).
+- **GRE Score** and **TOEFL Score** are the second and third most correlated features (0.80 and 0.79 respectively), but contribute far less than CGPA in tree-based models.
+- **Linear Regression and Ridge** perform nearly identically (R² of 0.8212 vs 0.8129), confirming the relationship between features and admission chance is largely linear.
+- **Random Forest** captures non-linear interactions (R² = 0.8081) but does not dramatically outperform linear models — suggesting diminishing returns from complexity on this dataset.
+- **SVR (RBF)** performs worst in this configuration (R² = 0.7496), likely due to suboptimal default hyperparameters (no grid search applied).
+- **Residuals are centered around zero** (mean = −0.0123) with no systematic bias — the model does not consistently over- or under-predict.
+- **Correct scaling protocol** (MinMaxScaler fit only on training data, then applied to both splits) prevents data leakage — a common mistake in many public implementations of this dataset.
+- High inter-feature correlations exist (e.g., GRE ↔ TOEFL = 0.84, GRE ↔ CGPA = 0.83), indicating multicollinearity — which Ridge regression is specifically designed to handle, though it confers minimal benefit here.
 
 ---
 
